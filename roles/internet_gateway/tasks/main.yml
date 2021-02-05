@@ -1,0 +1,34 @@
+- name: load test data
+  include_vars:
+    file: 'test-data/created_vpc_info.yml'
+  when: independent_test is defined and independent_test == 'true'
+
+- name: load static data
+  include_vars:
+    file: "{{ variables_file }}"
+    name: "ig_vars"
+
+# Input variable scope
+- name: set facts
+  set_fact:
+    ig_profile_name: "{{ ig_vars.aws_profile_name }}"
+    ig_vpc_id: "{{ created_vpc_info.vpc.id }}"
+    ig_state: "{{ ig_vars.state }}"
+    ig_name: "{{ ig_name | default('ansible-ig') }}"
+    public_subnets: []
+  # Should directly use input variables outside of this scope
+  # independent_test is only exception
+
+- name: Handle internet gateway
+  ec2_vpc_igw:
+    profile: "{{ ig_profile_name }}"
+    state: "{{ ig_state }}"
+    tags:
+      Name: "{{ ig_name }}"
+    vpc_id: "{{ ig_vpc_id }}"
+  register: 'created_internet_gateway_info'
+
+- name: output test data results
+  debug:
+    msg: "created_internet_gateway_info: {{ created_internet_gateway_info }}"
+  when: independent_test is defined and independent_test == 'true'
