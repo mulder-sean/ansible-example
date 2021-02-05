@@ -1,0 +1,35 @@
+- name: load test data
+  include_vars:
+    file: 'test-data/created_subnet_info.yml'
+  when: independent_test is defined and independent_test == 'true'
+
+- name: load static data
+  include_vars:
+    file: "{{ variables_file }}"
+    name: "ng_vars"
+
+# Input variable scope
+- name: set facts
+  set_fact:
+    ng_profile_name: "{{ ng_vars.aws_profile_name }}"
+    ng_state: "{{ ng_vars.state }}"
+    ng_created_subnet_info: "{{ created_subnet_info.results }}"
+# Should directly use input variables outside of this scope
+# independent_test is only exception
+
+- name: Handle nat gateways
+  ec2_vpc_nat_gateway:
+    profile: "{{ ng_profile_name }}"
+    if_exist_do_not_create: 'yes'
+    state: "{{ ng_state }}"
+    subnet_id: "{{ csb_info.subnet.id }}"
+  loop_control:
+    loop_var: 'csb_info'
+  with_items: "{{ ng_created_subnet_info }}"
+  when: csb_info.subnet.map_public_ip_on_launch
+  register: 'created_nat_gateways_info'
+
+- name: output test data results
+  debug:
+    msg: "created_nat_gateways_info: {{ created_nat_gateways_info }}"
+  when: independent_test is defined and independent_test == 'true'
