@@ -1,0 +1,29 @@
+- name: load static data
+  include_vars:
+    file: "{{ variables_file }}"
+    name: "vpc_vars"
+
+# Input variable scope
+- name: set facts
+  set_fact:
+    vpc_profile_name: "{{ vpc_vars.aws_profile_name }}"
+    vpc_cidr_block: "{{ vpc_vars.cidr_block }}"
+    vpc_cidr_block_name: "{{ vpc_vars.cidr_block_name | default('ansible-example') }}"
+    vpc_state: "{{ vpc_vars.state }}"
+# Should directly use input variables outside of this scope
+# independent_test is only exception
+
+- name: Handling VPC
+  ec2_vpc_net:
+    profile: "{{ vpc_profile_name }}"
+    cidr_block: "{{ vpc_cidr_block }}"
+    name: "{{ vpc_cidr_block_name }}"
+    state: "{{ vpc_state }}"
+    tags:
+      Name: "{{ vpc_cidr_block_name }}"
+  register: 'created_vpc_info'
+
+- name: Output test data results
+  debug:
+    msg: "created_vpc_info: {{ created_vpc_info }}"
+  when: independent_test is defined and independent_test == 'true'

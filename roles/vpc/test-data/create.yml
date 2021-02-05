@@ -1,0 +1,3 @@
+aws_profile_name: default
+cidr_block: 10.20.0.0/17
+state: present
