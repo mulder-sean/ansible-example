@@ -1,0 +1,5 @@
+built_nat_subnet_mapping: {
+  'results': [{
+    'public_subnets': ['subnet-0286f975a08726cfe', 'subnet-09d27172cd4179362', 'subnet-0c46d0f76d386ba74']
+  }]
+}

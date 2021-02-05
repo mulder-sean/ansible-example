@@ -1,0 +1,75 @@
+- name: load test data
+  include_vars:
+    file: "{{ ltd }}"
+  with_items:
+    - 'test-data/built_nat_subnet_mapping.yml'
+    - 'test-data/created_public_security_group_info.yml'
+  loop_control:
+    loop_var: 'ltd'
+  when: independent_test is defined and independent_test == 'true'
+
+- name: load static data
+  include_vars:
+    file: "{{ variables_file }}"
+    name: "alb_vars"
+
+# Input variable scope
+- name: set facts
+  set_fact:
+    alb_profile_name: "{{ alb_vars.aws_profile_name }}"
+    alb_access_logs_enabled: "{{ alb_vars.alb_access_logs_enabled | default('no') }}"
+    alb_access_logs_s3_bucket: "{{ alb_vars.alb_access_logs_s3_bucket | default('alb_logs') }}"
+    alb_access_logs_s3_prefix: "{{ alb_vars.alb_access_logs_s3_prefix | default('') }}"
+    alb_idle_timeout: "{{ alb_vars.alb_idle_timeout | default('60') }}"
+    alb_name: "{{ alb_vars.alb_name }}"
+    alb_scheme: "{{ alb_vars.alb_scheme | default('internet-facing')}}"
+    alb_security_group_ids: ["{{ created_public_security_group_info.group_id }}"]
+    alb_state: "{{ alb_vars.state }}"
+    alb_public_subnet_ids: []
+    alb_wait: "{{ alb_vars.wait | default('yes') }}"
+    alb_wait_timeout: "{{ alb_vars.wait_timeout | default('300') }}"
+    alb_protocol: "{{ alb_vars.alb_protocol | default('HTTP') }}"
+    alb_port: "{{ alb_vars.alb_port | default('80') }}"
+    alb_target_group_name: "{{ alb_vars.alb_target_name }}"
+
+- name: build public subnet_ids
+  set_fact:
+    alb_public_subnet_ids: "{{ alb_public_subnet_ids + epsi.public_subnets}}"
+  with_items: "{{ built_nat_subnet_mapping.results }}"
+  loop_control:
+    loop_var: 'epsi'
+# Should directly use input variables outside of this scope
+# independent_test is only exception
+
+- name: Handling alb
+  elb_application_lb:
+    profile: "{{ alb_profile_name }}"
+    access_logs_enabled: "{{ alb_access_logs_enabled }}"
+    access_logs_s3_bucket: "{{ alb_access_logs_s3_bucket }}"
+    access_logs_s3_prefix: "{{ alb_access_logs_s3_prefix }}"
+    idle_timeout: "{{ alb_idle_timeout }}"
+    listeners:
+      - Protocol: "{{ alb_protocol }}"
+        Port: "{{ alb_port }}"
+        DefaultActions:
+          - Type: 'forward'
+            TargetGroupName: "{{ alb_target_group_name }}"
+    name: "{{ alb_name }}"
+    scheme: "{{ alb_scheme }}"
+    security_groups: "{{ alb_security_group_ids }}"
+    state: "{{ alb_state }}"
+    subnets: "{{ alb_public_subnet_ids }}"
+    tags:
+      Name: "{{ alb_name }}"
+    wait: "{{ alb_wait }}"
+    wait_timeout: "{{ alb_wait_timeout }}"
+  register: 'created_alb_info'
+
+- name: Output test data results
+  debug:
+    msg: "created_alb_info: {{ created_alb_info }}"
+  when: independent_test is defined and independent_test == 'true'
+
+- name: Output url
+  debug:
+    msg: "Enjoy Web URL: {{ created_alb_info.dns_name }} "

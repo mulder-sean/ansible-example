@@ -1,0 +1,5 @@
+aws_profile_name: default
+state: present
+alb_name: 'ansible-alb'
+alb_target_name: 'ansible-alb'
+public_security_group_name: 'ansible-public'
