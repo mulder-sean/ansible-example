@@ -1,0 +1,8 @@
+created_nat_gateways_info: {
+  'results': [
+    {
+      'nat_gateway_id': 'nat-070612b08088176b9',
+      'subnet_id': 'subnet-04c343400c292c0e2'
+    }
+  ]
+}

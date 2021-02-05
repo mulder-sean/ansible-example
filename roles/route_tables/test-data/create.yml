@@ -1,0 +1,3 @@
+aws_profile_name: default
+state: present
+public_route_name: ansible-public

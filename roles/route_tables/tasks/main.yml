@@ -1,0 +1,85 @@
+- name: load test data
+  include_vars:
+    file: "{{ ltd }}"
+  with_items:
+    - 'test-data/created_vpc_info.yml'
+    - 'test-data/created_subnet_info.yml'
+    - 'test-data/created_internet_gateway_info.yml'
+    - 'test-data/created_nat_gateways_info.yml'
+  loop_control:
+    loop_var: 'ltd'
+  when: independent_test is defined and independent_test == 'true'
+
+- name: load static data
+  include_vars:
+    file: "{{ variables_file }}"
+    name: "route_vars"
+
+# Input variable scope
+- name: set facts
+  set_fact:
+    route_profile_name: "{{ route_vars.aws_profile_name }}"
+    route_state: "{{ route_vars.state }}"
+    route_vpc_id: "{{ created_vpc_info.vpc.id }}"
+    route_public_subnet_ids: []
+    route_public_name: "{{ route_vars.public_route_name }}"
+    route_ig_id: "{{ created_internet_gateway_info.gateway_id }}"
+
+- name: build private subnet mapping with nat gateways
+  BUILD_NAT_SUBNET_MAPPING:
+    subnet_info: "{{ created_subnet_info.results }}"
+    nat_gateway_info: "{{ created_nat_gateways_info.results }}"
+  register: 'built_nat_subnet_mapping'
+
+- name: output test data results
+  debug:
+    msg: "built_nat_subnet_mapping: {{ built_nat_subnet_mapping }}"
+  when: independent_test is defined and independent_test == 'true'
+
+- name: build public subnet_ids
+  set_fact:
+    route_public_subnet_ids: "{{ route_public_subnet_ids + rpsi.public_subnets}}"
+  with_items: "{{ built_nat_subnet_mapping.results }}"
+  loop_control:
+    loop_var: 'rpsi'
+# Should directly use input variables outside of this scope
+# independent_test is only exception
+
+- name: Handle public route table
+  ec2_vpc_route_table:
+    profile: "{{ route_profile_name }}"
+    routes:
+      - dest: '0.0.0.0/0'
+        gateway_id: "{{ route_ig_id }}"
+    state: "{{ route_state }}"
+    subnets: "{{ route_public_subnet_ids }}"
+    tags:
+      Name: "{{ route_public_name }}"
+    vpc_id: "{{ route_vpc_id }}"
+  register: 'created_public_route_info'
+
+- name: output test data results
+  debug:
+    msg: "created_public_route_info: {{ created_public_route_info }}"
+  when: independent_test is defined and independent_test == 'true'
+
+- name: Handle private route tables
+  ec2_vpc_route_table:
+    profile: "{{ route_profile_name }}"
+    routes:
+      - dest: '0.0.0.0/0'
+        gateway_id: "{{ mpr.nat_gateway_id }}"
+    state: "{{ route_state }}"
+    subnets: "{{ mpr.private_subnets }}"
+    tags:
+      Name: "private-{{ mpr.zone }}"
+    vpc_id: "{{ route_vpc_id }}"
+  with_items: "{{ built_nat_subnet_mapping.results }}"
+  loop_control:
+    loop_var: 'mpr'
+  register: 'created_private_route_info'
+
+- name: output test data results
+  debug:
+    msg: "created_private_route_info: {{ created_private_route_info }}"
+  when: independent_test is defined and independent_test == 'true'
