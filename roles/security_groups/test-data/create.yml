@@ -1,0 +1,4 @@
+aws_profile_name: default
+state: present
+private_security_group_name: 'ansible-private'
+public_security_group_name: 'ansible-public'

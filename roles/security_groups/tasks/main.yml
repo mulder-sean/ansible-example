@@ -1,0 +1,56 @@
+- name: load test data
+  include_vars:
+    file: 'test-data/created_vpc_info.yml'
+  when: independent_test is defined and independent_test == 'true'
+
+- name: load static data
+  include_vars:
+    file: "{{ variables_file }}"
+    name: "ec2_group_vars"
+
+# Input variable scope
+- name: set facts
+  set_fact:
+    ec2_group_profile_name: "{{ ec2_group_vars.aws_profile_name }}"
+    ec2_group_private_name: "{{ ec2_group_vars.private_security_group_name}}"
+    ec2_group_public_name: "{{ ec2_group_vars.public_security_group_name }}"
+    ec2_group_state: "{{ ec2_group_vars.state }}"
+    ec2_group_vpc_id: "{{ created_vpc_info.vpc.id }}"
+# Should directly use input variables outside of this scope
+# independent_test is only exception
+
+- name: Handle public security group
+  ec2_group:
+    profile: "{{ ec2_group_profile_name }}"
+    description: "{{ ec2_group_public_name }}"
+    name: "{{ ec2_group_public_name }}"
+    rules:
+      - proto: 'tcp'
+        from_port: '80'
+        to_port: '80'
+        cidr_ip: '0.0.0.0/0'
+    state: "{{ ec2_group_state }}"
+    tags:
+      Name: "{{ ec2_group_public_name }}"
+    vpc_id: "{{ ec2_group_vpc_id }}"
+  register: 'created_public_security_group_info'
+
+- name: output test data results
+  debug:
+    msg: "created_public_security_group_info: {{ created_public_security_group_info }}"
+  when: independent_test is defined and independent_test == 'true'
+
+- name: Handle private security group
+  ec2_group:
+    profile: "{{ ec2_group_profile_name }}"
+    description: "{{ ec2_group_private_name }}"
+    name: "{{ ec2_group_private_name }}"
+    rules:
+      - proto: 'tcp'
+        from_port: '8080'
+        to_port: '8080'
+        group_id: "{{ created_public_security_group_info.group_id }}"
+    state: "{{ ec2_group_state }}"
+    tags:
+      Name: "{{ ec2_group_private_name }}"
+    vpc_id: "{{ ec2_group_vpc_id }}"
