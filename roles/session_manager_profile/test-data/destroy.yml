@@ -1,0 +1,3 @@
+aws_profile_name: default
+state: absent
+session_manager_name: 'ansible-session-manager'

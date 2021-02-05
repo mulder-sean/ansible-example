@@ -1,0 +1,37 @@
+- name: load static data
+  include_vars:
+    file: "{{ variables_file }}"
+    name: "sm_vars"
+
+# Input variable scope
+- name: set facts
+  set_fact:
+    sm_profile_name: "{{ sm_vars.aws_profile_name }}"
+    sm_state: "{{ sm_vars.state }}"
+    sm_name: "{{ sm_vars.session_manager_name }}"
+# Should directly use input variables outside of this scope
+# independent_test is only exception
+
+- name: Handle session manager policy
+  iam_managed_policy:
+    profile: "{{ sm_profile_name }}"
+    policy: '{"Version": "2012-10-17", "Statement": [{"Effect": "Allow", "Action": ["ssm:UpdateInstanceInformation", "ssmmessages:CreateControlChannel", "ssmmessages:CreateDataChannel", "ssmmessages:OpenControlChannel", "ssmmessages:OpenDataChannel"], "Resource": "*"}, {"Effect": "Allow", "Action": ["s3:GetEncryptionConfiguration"], "Resource": "*"}]}'
+    policy_name: "{{ sm_name }}"
+    state: "{{ sm_state }}"
+
+- name: Handle session manager role
+  iam_role:
+    profile: "{{ sm_profile_name }}"
+    assume_role_policy_document: '{"Version": "2012-10-17", "Statement": [{"Effect": "Allow", "Principal": {"Service": "ec2.amazonaws.com"}, "Action": "sts:AssumeRole"}]}'
+    create_instance_profile: 'yes'
+    description: "{{ sm_name }}"
+    managed_policy:
+      - "{{ sm_name }}"
+    name: "{{ sm_name }}"
+    state: "{{ sm_state }}"
+  register: created_session_manager_role_info
+
+- name: output test data results
+  debug:
+    msg: "created_session_manager_role_info: {{ created_session_manager_role_info }}"
+  when: independent_test is defined and independent_test == 'true'
