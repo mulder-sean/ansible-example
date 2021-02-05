@@ -1,0 +1,12 @@
+---
+dependencies:
+  - { role: vpc }
+  - { role: subnets }
+  - { role: internet_gateway }
+  - { role: nat_gateways }
+  - { role: route_tables }
+  - { role: session_manager_profile }
+  - { role: security_groups }
+  - { role: ec2 }
+  - { role: alb_target_group }
+  - { role: alb }

@@ -1,0 +1,6 @@
+---
+- name: Local
+  hosts: 'localhost'
+  connection: 'local'
+  roles:
+    - "{{ role }}"
