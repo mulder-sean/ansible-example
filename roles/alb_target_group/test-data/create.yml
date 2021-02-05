@@ -1,0 +1,3 @@
+aws_profile_name: default
+state: present
+alb_target_name: 'ansible-alb'

@@ -1,0 +1,69 @@
+- name: load test data
+  include_vars:
+    file: "{{ ltd }}"
+  with_items:
+    - 'test-data/created_vpc_info.yml'
+    - 'test-data/created_ec2_instance_info.yml'
+  loop_control:
+    loop_var: 'ltd'
+  when: independent_test is defined and independent_test == 'true'
+
+- name: load static data
+  include_vars:
+    file: "{{ variables_file }}"
+    name: "alb_target_vars"
+
+# Input variable scope
+- name: set facts
+  set_fact:
+    alb_target_profile_name: "{{ alb_target_vars.aws_profile_name }}"
+    alb_target_health_check_interval: "{{ alb_target_vars.health_check_interval | default('30') }}"
+    alb_target_health_check_path: "{{ alb_target_vars.health_check_path | default('/') }}"
+    alb_target_health_check_port: "{{ alb_target_vars.health_check_port | default('8080') }}"
+    alb_target_health_check_protocol: "{{ alb_target_vars.health_check_protocol | default('HTTP') }}"
+    alb_target_name: "{{ alb_target_vars.alb_target_name }}"
+    alb_target_port: "{{ alb_target_vars.target_port | default('8080') }}"
+    alb_target_protocol: "{{ alb_target_vars.target_protocol | default('HTTP') }}"
+    alb_target_state: "{{ alb_target_vars.state }}"
+    alb_target_successful_response_codes: "{{ alb_target_vars.successful_respose_codes | default('200') }}"
+    alb_target_target_type: "{{ alb_target_vars.target_type | default('instance') }}"
+    alb_target_targets: "{{ created_ec2_instance_info.instance_ids[0] }}"
+    alb_target_unhealthy_threshold_count: "{{ alb_target_vars.unhealthy_threshold_count | default('2') }}"
+    alb_target_healthy_threshold_count: "{{ alb_target_vars.healthy_threshold_count | default('2') }}"
+    alb_target_vpc_id: "{{ created_vpc_info.vpc.id }}"
+    alb_target_wait: "{{ alb_target_vars.wait | default('no') }}"
+    alb_target_wait_timeout: "{{ alb_target_vars.wait_timeout | default('60') }}"
+    alb_target_stickiness_enabled: "{{ alb_target_vars.stickiness_enabled | default('no') }}"
+# Should directly use input variables outside of this scope
+# independent_test is only exception
+
+- name: Handling alb target group
+  elb_target_group:
+    profile: "{{ alb_target_profile_name }}"
+    health_check_interval: "{{ alb_target_health_check_interval }}"
+    health_check_path: "{{ alb_target_health_check_path }}"
+    health_check_port: "{{ alb_target_health_check_port }}"
+    health_check_protocol: "{{ alb_target_health_check_protocol }}"
+    healthy_threshold_count: "{{ alb_target_healthy_threshold_count }}"
+    name: "{{ alb_target_name }}"
+    port: "{{ alb_target_port }}"
+    protocol: "{{ alb_target_protocol }}"
+    state: "{{ alb_target_state }}"
+    stickiness_enabled: "{{ alb_target_stickiness_enabled }}"
+    successful_response_codes: "{{ alb_target_successful_response_codes }}"
+    tags:
+      Name: "{{ alb_target_name }}"
+    target_type: "{{ alb_target_target_type }}"
+    targets:
+      - Id: "{{ alb_target_targets }}"
+        Port: 8080
+    unhealthy_threshold_count: "{{ alb_target_unhealthy_threshold_count }}"
+    vpc_id: "{{ alb_target_vpc_id }}"
+    wait: "{{ alb_target_wait }}"
+    wait_timeout: "{{ alb_target_wait_timeout }}"
+  register: 'created_alb_target_group_info'
+
+- name: Output test data results
+  debug:
+    msg: "created_alb_target_group_info: {{ created_alb_target_group_info }}"
+  when: independent_test is defined and independent_test == 'true'
