@@ -1,0 +1,39 @@
+- name: load test data
+  include_vars:
+    file: 'test-data/created_vpc_info.yml'
+  when: independent_test is defined and independent_test == 'true'
+
+- name: load static data
+  include_vars:
+    file: "{{ variables_file }}"
+    name: "subnet_vars"
+
+# Input variable scope
+- name: set facts
+  set_fact:
+    subnet_profile_name: "{{ subnet_vars.aws_profile_name }}"
+    subnet_vpc_id: "{{ created_vpc_info.vpc.id }}"
+    subnet_state: "{{ subnet_vars.state }}"
+    subnet_info: "{{ subnet_vars.subnet_info }}"
+# Should directly use input variables outside of this scope
+# independent_test is only exception
+
+- name: Handle subnets
+  ec2_vpc_subnet:
+    profile: "{{ subnet_profile_name }}"
+    az: "{{ subs.az }}"
+    cidr: "{{ subs.cidr_block }}"
+    map_public: "{{ subs.map_public }}"
+    state: "{{ subnet_state }}"
+    tags:
+      Name: "{{ subs.Name }}"
+    vpc_id: "{{ subnet_vpc_id }}"
+  register: 'created_subnet_info'
+  loop_control:
+    loop_var: 'subs'
+  with_items: "{{ subnet_info }}"
+
+- name: output test data results
+  debug:
+    msg: "created_subnet_info: {{ created_subnet_info }}"
+  when: independent_test is defined and independent_test == 'true'

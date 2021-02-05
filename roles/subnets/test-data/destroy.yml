@@ -1,0 +1,15 @@
+aws_profile_name: default
+subnet_info:
+  - {
+      'az': 'us-east-1a',
+      'cidr_block': '10.20.4.0/22',
+      'map_public': 'yes',
+      'Name': 'ansible_a_public'
+    }
+  - {
+      'az': 'us-east-1a',
+      'cidr_block': '10.20.16.0/22',
+      'map_public': 'no',
+      'Name': 'ansible_a_private'
+    }
+state: absent
