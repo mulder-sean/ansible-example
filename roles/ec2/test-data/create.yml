@@ -1,0 +1,7 @@
+aws_profile_name: default
+state: present
+ec2_name: ansible-ec2-test
+image_id: ami-047a51fa27710816e
+session_manager_name: ansible-session-manager
+instance_type: t3.small
+private_security_group_name: 'ansible-private'

@@ -1,0 +1,75 @@
+- name: load test data
+  include_vars:
+    file: 'test-data/created_subnet_info.yml'
+  when: independent_test is defined and independent_test == 'true'
+
+- name: load static data
+  include_vars:
+    file: "{{ variables_file }}"
+    name: "ec2_vars"
+
+# Input variable scope
+- name: set facts
+  set_fact:
+    ec2_profile_name: "{{ ec2_vars.aws_profile_name }}"
+    ec2_name: "{{ ec2_vars.ec2_name }}"
+    ec2_image_id: "{{ ec2_vars.image_id }}"
+    ec2_session_manager_role_name: "{{ ec2_vars.session_manager_name }}"
+    ec2_instance_type: "{{ ec2_vars.instance_type }}"
+    ec2_state: "{{ ec2_vars.state }}"
+    ec2_private_security_group_name: "{{ ec2_vars.private_security_group_name }}"
+
+- name: select subnet id
+  set_fact:
+    vpc_subnet_id: "{{ ssi.subnet.id }}"
+  with_items: "{{ created_subnet_info.results }}"
+  loop_control:
+    loop_var: 'ssi'
+  when: not ssi.subnet.map_public_ip_on_launch
+# Should directly use input variables outside of this scope
+# independent_test is only exception
+
+- name: Fetch security group
+  ec2_group_info:
+    profile: "{{ ec2_profile_name }}"
+    filters:
+      group-name:
+        - "{{ ec2_private_security_group_name }}"
+  register: 'private_security_group_info'
+
+- name: output test data results
+  debug:
+    msg: "private_security_group_info: {{ private_security_group_info }}"
+  when: independent_test is defined and independent_test == 'true'
+
+- name: Handle ec2 instance
+  ec2_instance:
+    profile: "{{ ec2_profile_name }}"
+    detailed_monitoring: 'no'
+    ebs_optimized: 'no'
+    image_id: "{{ ec2_image_id }}"
+    instance_role: "{{ ec2_session_manager_role_name }}"
+    instance_type: "{{ ec2_instance_type }}"
+    name: "{{ ec2_name }}"
+    security_group: "{{ private_security_group_info.security_groups[0].group_id }}"
+    state: "{{ ec2_state }}"
+    tags:
+      Name: "{{ ec2_name }}"
+    user_data: |
+      #!/bin/bash
+      yum update
+      yum -y install java-1.8.0-openjdk tomcat
+      systemctl enable amazon-ssm-agent
+      systemctl start amazon-ssm-agent
+      systemctl enable tomcat
+      systemctl start tomcat
+      iptables -A INPUT -p tcp --dport 8080 -j ACCEPT
+      mkdir /var/lib/tomcat/webapps/ROOT
+      echo "<html><h1>Welcome</h1></html>" > /var/lib/tomcat/webapps/ROOT/index.html
+    vpc_subnet_id: "{{ vpc_subnet_id }}"
+  register: 'created_ec2_instance_info'
+
+- name: output test data results
+  debug:
+    msg: "created_ec2_instance_info: {{ created_ec2_instance_info }}"
+  when: independent_test is defined and independent_test == 'true'

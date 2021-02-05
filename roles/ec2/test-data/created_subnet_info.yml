@@ -1,0 +1,13 @@
+created_subnet_info: {
+  'results': [{
+    'subnet': {
+      'map_public_ip_on_launch': True,
+      'id': 'subnet-04c343400c292c0e2'
+    },
+  }, {
+    'subnet': {
+      'map_public_ip_on_launch': False,
+      'id': 'subnet-049de2d67e21a5ec0'
+    }
+  }]
+}
